@@ -1411,7 +1411,7 @@ ngx_http_upstream_check_discard_handler(ngx_event_t *event)
 
     return;
 
- check_discard_fail:
+check_discard_fail:
     c->error = 1;
     ngx_http_upstream_check_clean_event(peer);
 }
