@@ -1,5 +1,5 @@
 diff --git a/src/http/modules/ngx_http_upstream_hash_module.c b/src/http/modules/ngx_http_upstream_hash_module.c
-index 2ecc8d3..f92d097 100644
+index 2ecc8d3..fae9a2a 100644
 --- a/src/http/modules/ngx_http_upstream_hash_module.c
 +++ b/src/http/modules/ngx_http_upstream_hash_module.c
 @@ -9,6 +9,9 @@
@@ -44,7 +44,7 @@ index 2ecc8d3..f92d097 100644
                  || ngx_strncmp(peer->server.data, server->data, server->len)
                     != 0)
 diff --git a/src/http/modules/ngx_http_upstream_ip_hash_module.c b/src/http/modules/ngx_http_upstream_ip_hash_module.c
-index 1c1b41d..8cc0b3a 100644
+index 1c1b41d..11559e0 100644
 --- a/src/http/modules/ngx_http_upstream_ip_hash_module.c
 +++ b/src/http/modules/ngx_http_upstream_ip_hash_module.c
 @@ -9,6 +9,9 @@
@@ -122,7 +122,7 @@ index 4df9777..3b33ade 100644
              continue;
          }
 diff --git a/src/http/ngx_http_upstream_round_robin.c b/src/http/ngx_http_upstream_round_robin.c
-index 4637318..789c0da 100644
+index 4637318..ca7c041 100644
 --- a/src/http/ngx_http_upstream_round_robin.c
 +++ b/src/http/ngx_http_upstream_round_robin.c
 @@ -9,6 +9,9 @@
@@ -135,7 +135,23 @@ index 4637318..789c0da 100644
  
  #define ngx_http_upstream_tries(p) ((p)->tries                                \
                                      + ((p)->next ? (p)->next->tries : 0))
-@@ -211,6 +214,15 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
+@@ -190,6 +193,15 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
+                 peer[n].down = server[i].down;
+                 peer[n].server = server[i].name;
+ 
++#if (NGX_HTTP_UPSTREAM_CHECK)
++                if (!server[i].down) {
++                    peer[n].check_index =
++                        ngx_http_upstream_check_add_peer(cf, us, &server[i].addrs[0]);
++                } else {
++                    peer[n].check_index = (ngx_uint_t) NGX_ERROR;
++                }
++#endif
++
+                 *rpeerp = &peer[n];
+                 rpeerp = &peer[n].next;
+                 n++;
+@@ -211,6 +223,15 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
                  peer[n].down = server[i].down;
                  peer[n].server = server[i].name;
  
@@ -151,7 +167,23 @@ index 4637318..789c0da 100644
                  *peerp = &peer[n];
                  peerp = &peer[n].next;
                  n++;
-@@ -337,6 +349,15 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
+@@ -316,6 +337,15 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
+                 peer[n].down = server[i].down;
+                 peer[n].server = server[i].name;
+ 
++#if (NGX_HTTP_UPSTREAM_CHECK)
++                if (!server[i].down) {
++                    peer[n].check_index =
++                        ngx_http_upstream_check_add_peer(cf, us, &server[i].addrs[0]);
++                } else {
++                    peer[n].check_index = (ngx_uint_t) NGX_ERROR;
++                }
++#endif     
++
+                 *rpeerp = &peer[n];
+                 rpeerp = &peer[n].next;
+                 n++;
+@@ -337,6 +367,15 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
                  peer[n].down = server[i].down;
                  peer[n].server = server[i].name;
  
@@ -167,7 +199,7 @@ index 4637318..789c0da 100644
                  *peerp = &peer[n];
                  peerp = &peer[n].next;
                  n++;
-@@ -404,6 +425,9 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
+@@ -404,6 +443,9 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
          peer[i].max_conns = 0;
          peer[i].max_fails = 1;
          peer[i].fail_timeout = 10;
@@ -177,7 +209,7 @@ index 4637318..789c0da 100644
          *peerp = &peer[i];
          peerp = &peer[i].next;
      }
-@@ -529,6 +553,9 @@ ngx_http_upstream_create_round_robin_peer(ngx_http_request_t *r,
+@@ -529,6 +571,9 @@ ngx_http_upstream_create_round_robin_peer(ngx_http_request_t *r,
          peer[0].max_conns = 0;
          peer[0].max_fails = 1;
          peer[0].fail_timeout = 10;
@@ -187,7 +219,7 @@ index 4637318..789c0da 100644
          peers->peer = peer;
  
      } else {
-@@ -563,6 +590,9 @@ ngx_http_upstream_create_round_robin_peer(ngx_http_request_t *r,
+@@ -563,6 +608,9 @@ ngx_http_upstream_create_round_robin_peer(ngx_http_request_t *r,
              peer[i].max_conns = 0;
              peer[i].max_fails = 1;
              peer[i].fail_timeout = 10;
@@ -197,7 +229,7 @@ index 4637318..789c0da 100644
              *peerp = &peer[i];
              peerp = &peer[i].next;
          }
-@@ -634,6 +664,12 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
+@@ -634,6 +682,12 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
              goto failed;
          }
  
@@ -210,7 +242,7 @@ index 4637318..789c0da 100644
          rrp->current = peer;
          ngx_http_upstream_rr_peer_ref(peers, peer);
  
-@@ -733,6 +769,12 @@ ngx_http_upstream_get_peer(ngx_http_upstream_rr_peer_data_t *rrp)
+@@ -733,6 +787,12 @@ ngx_http_upstream_get_peer(ngx_http_upstream_rr_peer_data_t *rrp)
              continue;
          }
  
