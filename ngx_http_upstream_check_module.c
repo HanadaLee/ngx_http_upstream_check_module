@@ -157,10 +157,12 @@ typedef struct {
 #define NGX_HTTP_CHECK_MYSQL                 0x0008
 #define NGX_HTTP_CHECK_AJP                   0x0010
 
-#define NGX_CHECK_HTTP_2XX                   0x0002
-#define NGX_CHECK_HTTP_3XX                   0x0004
-#define NGX_CHECK_HTTP_4XX                   0x0008
-#define NGX_CHECK_HTTP_5XX                   0x0010
+#define NGX_CHECK_HTTP_1XX                   0x0002
+#define NGX_CHECK_HTTP_2XX                   0x0004
+#define NGX_CHECK_HTTP_3XX                   0x0008
+#define NGX_CHECK_HTTP_4XX                   0x0010
+#define NGX_CHECK_HTTP_5XX                   0x0020
+
 #define NGX_CHECK_HTTP_ERR                   0x8000
 
 typedef struct {
@@ -493,6 +495,7 @@ static ngx_int_t ngx_http_upstream_check_init_process(ngx_cycle_t *cycle);
 
 
 static ngx_conf_bitmask_t  ngx_check_http_expect_alive_masks[] = {
+    { ngx_string("http_1xx"), NGX_CHECK_HTTP_1XX },
     { ngx_string("http_2xx"), NGX_CHECK_HTTP_2XX },
     { ngx_string("http_3xx"), NGX_CHECK_HTTP_3XX },
     { ngx_string("http_4xx"), NGX_CHECK_HTTP_4XX },
@@ -663,7 +666,7 @@ static ngx_check_conf_t  ngx_check_types[] = {
       NULL,
       NULL,
       0,
-      1 },
+      0 },
 
     { NGX_HTTP_CHECK_HTTP,
       ngx_string("http"),
@@ -1087,6 +1090,21 @@ ngx_http_upstream_check_begin_handler(ngx_event_t *event)
         return;
     }
 
+    /* 
+     * The current time maybe delayed(some operation take too long)
+     * We don't need to trigger the check event at this point.
+     */
+    if (ngx_current_msec < peer->shm->access_time) {
+        ngx_log_error(NGX_LOG_WARN, event->log, 0,
+                      "time maybe delayed, got current_msec:%M, "
+                      "shm_access_time:%M", ngx_current_msec,
+                      peer->shm->access_time);
+        return;
+    }
+
+    ngx_shmtx_lock(&peer->shm->mutex);
+
+    /* interval should be protected by mutex. */
     interval = ngx_current_msec - peer->shm->access_time;
     ngx_log_debug5(NGX_LOG_DEBUG_HTTP, event->log, 0,
                    "http check begin handler index: %ui, owner: %P, "
@@ -1094,8 +1112,6 @@ ngx_http_upstream_check_begin_handler(ngx_event_t *event)
                    peer->index, peer->shm->owner,
                    ngx_pid, interval,
                    ucscf->check_interval);
-
-    ngx_shmtx_lock(&peer->shm->mutex);
 
     if (peers_shm->generation != ngx_http_upstream_check_shm_generation) {
         ngx_shmtx_unlock(&peer->shm->mutex);
@@ -1701,7 +1717,9 @@ ngx_http_upstream_check_http_parse(ngx_http_upstream_check_peer_t *peer)
 
         code = ctx->status.code;
 
-        if (code >= 200 && code < 300) {
+        if (code > 99 && code < 200) {
+            code_n = NGX_CHECK_HTTP_1XX;
+        } else if (code >= 200 && code < 300) {
             code_n = NGX_CHECK_HTTP_2XX;
         } else if (code >= 300 && code < 400) {
             code_n = NGX_CHECK_HTTP_3XX;
@@ -1969,7 +1987,9 @@ ngx_http_upstream_check_fastcgi_parse(ngx_http_upstream_check_peer_t *peer)
 
         code = ctx->status.code;
 
-        if (code >= 200 && code < 300) {
+        if (code > 99 && code < 200) {
+            code_n = NGX_CHECK_HTTP_1XX;
+        } else if (code >= 200 && code < 300) {
             code_n = NGX_CHECK_HTTP_2XX;
         } else if (code >= 300 && code < 400) {
             code_n = NGX_CHECK_HTTP_3XX;
@@ -2873,7 +2893,9 @@ ngx_http_upstream_check_status_handler(ngx_http_request_t *r)
         ctx->format = uclcf->format;
     }
 
+    r->headers_out.content_type_len = ctx->format->content_type.len;
     r->headers_out.content_type = ctx->format->content_type;
+    r->headers_out.content_type_lowcase = NULL;
 
     if (r->method == NGX_HTTP_HEAD) {
         r->headers_out.status = NGX_HTTP_OK;
@@ -3170,7 +3192,7 @@ ngx_http_upstream_check_status_json_format(ngx_buf_t *b,
             count,
             ngx_http_upstream_check_shm_generation);
 
-    last = peers->peers.nelts - 1;
+    last = 0;
     for (i = 0; i < peers->peers.nelts; i++) {
 
         if (flag & NGX_CHECK_STATUS_DOWN) {
@@ -3185,6 +3207,8 @@ ngx_http_upstream_check_status_json_format(ngx_buf_t *b,
                 continue;
             }
         }
+
+        last++;
 
         b->last = ngx_snprintf(b->last, b->end - b->last,
                 "    {\"index\": %ui, "
@@ -3204,7 +3228,7 @@ ngx_http_upstream_check_status_json_format(ngx_buf_t *b,
                 peer[i].shm->fall_count,
                 &peer[i].conf->check_type_conf->name,
                 peer[i].conf->port,
-                (i == last) ? "" : ",");
+                (last == count) ? "" : ",");
     }
 
     b->last = ngx_snprintf(b->last, b->end - b->last,

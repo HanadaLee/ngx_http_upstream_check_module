@@ -33,8 +33,8 @@ index 2ecc8d3..f92d097 100644
  
 +#if (NGX_HTTP_UPSTREAM_CHECK)
 +            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0,
-+                            "get consistent_hash peer, check_index: %ui",
-+                            peer->check_index);
++                           "get consistent_hash peer, check_index: %ui",
++                           peer->check_index);
 +            if (ngx_http_upstream_check_peer_down(peer->check_index)) {
 +                continue;
 +            }
@@ -63,8 +63,8 @@ index 1c1b41d..8cc0b3a 100644
  
 +#if (NGX_HTTP_UPSTREAM_CHECK)
 +        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0,
-+            "get ip_hash peer, check_index: %ui",
-+                peer->check_index);
++                       "get ip_hash peer, check_index: %ui",
++                       peer->check_index);
 +        if (ngx_http_upstream_check_peer_down(peer->check_index)) {
 +            goto next;
 +        }
