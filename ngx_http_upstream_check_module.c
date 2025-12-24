@@ -34,7 +34,7 @@ typedef struct {
     u_char                                   random[28];
 
     u_char                                   others[0];
-} ngx_ssl_server_hello_t;
+} ngx_http_upstream_check_ssl_server_hello_t;
 
 
 typedef struct {
@@ -43,14 +43,14 @@ typedef struct {
 
     u_char                                   protocol_version;
     u_char                                   others[0];
-} ngx_mysql_handshake_init_t;
+} ngx_http_upstream_check_mysql_handshake_init_t;
 
 
 typedef struct {
     uint16_t                                 preamble;
     uint16_t                                 length;
     u_char                                   type;
-} ngx_ajp_raw_packet_t;
+} ngx_http_upstream_check_ajp_raw_packet_t;
 
 #pragma pack()
 
@@ -2509,18 +2509,18 @@ ngx_http_upstream_check_ssl_hello_init(ngx_http_upstream_check_peer_t *peer)
 static ngx_int_t
 ngx_http_upstream_check_ssl_hello_parse(ngx_http_upstream_check_peer_t *peer)
 {
-    size_t                         size;
-    ngx_ssl_server_hello_t        *resp;
-    ngx_http_upstream_check_ctx_t *ctx;
+    size_t                                       size;
+    ngx_http_upstream_check_ssl_server_hello_t  *resp;
+    ngx_http_upstream_check_ctx_t               *ctx;
 
     ctx = peer->check_data;
 
     size = ctx->recv.last - ctx->recv.pos;
-    if (size < sizeof(ngx_ssl_server_hello_t)) {
+    if (size < sizeof(ngx_http_upstream_check_ssl_server_hello_t)) {
         return NGX_AGAIN;
     }
 
-    resp = (ngx_ssl_server_hello_t *) ctx->recv.pos;
+    resp = (ngx_http_upstream_check_ssl_server_hello_t *) ctx->recv.pos;
 
     ngx_log_debug7(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
                    "http check ssl_parse, type: %ud, version: %ud.%ud, "
@@ -2578,18 +2578,18 @@ ngx_http_upstream_check_mysql_init(ngx_http_upstream_check_peer_t *peer)
 static ngx_int_t
 ngx_http_upstream_check_mysql_parse(ngx_http_upstream_check_peer_t *peer)
 {
-    size_t                         size;
-    ngx_mysql_handshake_init_t    *handshake;
-    ngx_http_upstream_check_ctx_t *ctx;
+    size_t                                           size;
+    ngx_http_upstream_check_mysql_handshake_init_t  *handshake;
+    ngx_http_upstream_check_ctx_t                   *ctx;
 
     ctx = peer->check_data;
 
     size = ctx->recv.last - ctx->recv.pos;
-    if (size < sizeof(ngx_mysql_handshake_init_t)) {
+    if (size < sizeof(ngx_http_upstream_check_mysql_handshake_init_t)) {
         return NGX_AGAIN;
     }
 
-    handshake = (ngx_mysql_handshake_init_t *) ctx->recv.pos;
+    handshake = (ngx_http_upstream_check_mysql_handshake_init_t *) ctx->recv.pos;
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
                    "mysql_parse: packet_number=%ud, protocol=%ud, server=%s",
@@ -2656,9 +2656,9 @@ ngx_http_upstream_check_ajp_parse(ngx_http_upstream_check_peer_t *peer)
 
 #if (NGX_DEBUG)
     {
-    ngx_ajp_raw_packet_t  *ajp;
+    ngx_http_upstream_check_ajp_raw_packet_t  *ajp;
 
-    ajp = (ngx_ajp_raw_packet_t *) p;
+    ajp = (ngx_http_upstream_check_ajp_raw_packet_t *) p;
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
                    "ajp_parse: preamble=0x%uxd, length=0x%uxd, type=0x%uxd",
                    ntohs(ajp->preamble), ntohs(ajp->length), ajp->type);
