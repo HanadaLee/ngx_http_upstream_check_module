@@ -1017,11 +1017,11 @@ ngx_http_upstream_check_add_timers(ngx_cycle_t *cycle)
         ucscf = peer[i].conf;
         cf = ucscf->check_type_conf;
 #if (NGX_HTTP_SSL)
-		if (ngx_http_upstream_check_is_https(&peer[i])) {
-		    ngx_ssl_create(&ucscf->ssl, NGX_SSL_SSLv3 | NGX_SSL_TLSv1 
-                                      | NGX_SSL_TLSv1_1 | NGX_SSL_TLSv1_2
-                                      | NGX_SSL_TLSv1_3 ,0);
-		}
+        if (ngx_http_upstream_check_is_https(&peer[i])) {
+            ngx_ssl_create(&ucscf->ssl, NGX_SSL_SSLv3 | NGX_SSL_TLSv1 
+                                    | NGX_SSL_TLSv1_1 | NGX_SSL_TLSv1_2
+                                    | NGX_SSL_TLSv1_3 ,0);
+        }
 #endif
 
         if (cf->need_pool) {
@@ -1223,7 +1223,7 @@ ngx_http_upstream_check_free_ssl_data(ngx_http_upstream_check_peer_t *peer)
         return;
     }
 
-	c = peer->pc.connection;
+    c = peer->pc.connection;
     if (!c) {
         return;
     }
